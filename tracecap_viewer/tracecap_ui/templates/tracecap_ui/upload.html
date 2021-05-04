@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+
+{% block title %}Home{% endblock %}
+
+{% block heading %}Upload a trace{% endblock %}
+
+{% block content %}
+<form action="{{ upload_presigned.url }}" method="post" novalidate enctype="multipart/form-data">
+    {% for k,v in upload_presigned.fields.items %}
+    <input type="hidden" name="{{ k }}" value="{{ v }}" />
+    {% endfor %}
+    <input type="file" name="file" /><br />
+    <br />
+    <button type="submit" class="spectrum-Button spectrum-Button--primary spectrum-Button--sizeS">
+        <span class="spectrum-Button-label">Upload</span>
+    </button>
+</form>
+{% endblock %}

@@ -1,0 +1,22 @@
+  {
+  "compilerOptions": {
+    "target": "es2018",
+    "module": "esnext",
+    "moduleResolution": "node",
+    "noEmitOnError": true,
+    "lib": ["es2017", "dom", "dom.iterable"],
+    "strict": true,
+    "esModuleInterop": false,
+    "allowSyntheticDefaultImports": true,
+    "experimentalDecorators": true,
+    "importHelpers": true,
+    "outDir": "out-tsc",
+    "sourceMap": true,
+    "inlineSources": true,
+    "rootDir": "./",
+    "types": ["long", "mocha"],
+    "allowJs": true,
+    "allowUmdGlobalAccess": true
+  },
+  "include": ["src/**/*.ts", "src/**/*.js"]
+}

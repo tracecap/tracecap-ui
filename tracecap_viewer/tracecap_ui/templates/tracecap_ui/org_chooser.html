@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+
+{% block title %}Home{% endblock %}
+
+{% block content %}
+
+  Welcome back, {{ user.username }}! <a href="{% url 'logout' %}">Log Out</a>
+  <br /><br />
+  {% for project in projects %}
+  <a href="{% url "ui" provider=project.provider scope=project.name %}">{{ project.name }}</a><br /><br />
+  {% endfor %}
+  <br /><br />
+  {% comment %}<a href="{% url "upload" %}">Upload new tracecap</a>{% endcomment %}
+
+{% endblock %}

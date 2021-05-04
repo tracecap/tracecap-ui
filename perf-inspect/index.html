@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en" class="spectrum spectrum--medium spectrum--light">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="Description" content="Put your description here.">
+  <base href="/">
+
+  <link rel="stylesheet" href="{% static "dist-perf-inspect/tracecap-viewer.css" %}">
+
+  <title>tracecap.app</title>
+</head>
+
+<body>
+  <sp-split-view vertical primary-min="80" primary-max="80" primary-size="80" style="height: 100%;">
+    <query-pipeline id="main-pipeline-input"></query-pipeline>
+
+    <sp-split-view vertical primary-min="300" primary-size="10000" secondary-min="300" secondary-max="300" style="height: 100%;">
+      <timeline-view id="main-app-view">
+      </timeline-view>
+  
+      <timeline-detail-inspector id="timeline-detail">
+      </timeline-detail-inspector>
+    </sp-split-view>
+  </sp-split-view>
+
+  <script src="https://cdn.rawgit.com/dcodeIO/long.js/4.0.0/dist/long.js"></script>
+  <script src="https://cdn.rawgit.com/dcodeIO/protobuf.js/v6.10.2/dist/protobuf.js"></script>
+  <script>$protobuf = protobuf;</script>
+  <script type="module" src="./out-tsc/src/perf-inspect.js"></script>
+</body>
+
+</html>
