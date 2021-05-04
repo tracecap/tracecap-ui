@@ -6,3 +6,6 @@ pymysql
 nanoid
 PyGithub
 boto3
+gunicorn
+psycopg2-binary
+dj-database-url
