@@ -5,6 +5,12 @@
 {% block heading %}Upload a trace{% endblock %}
 
 {% block content %}
+Want to push from the CLI instead of uploading? <a href="{% url "push-token" provider=project.provider scope=project.name %}">Get a push token</a>
+<br />
+<br />
+<hr />
+<br />
+<br />
 <form action="{{ upload_presigned.url }}" method="post" novalidate enctype="multipart/form-data">
     {% for k,v in upload_presigned.fields.items %}
     <input type="hidden" name="{{ k }}" value="{{ v }}" />

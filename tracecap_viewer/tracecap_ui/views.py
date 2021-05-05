@@ -5,15 +5,19 @@ from django.contrib.auth.decorators import login_required
 from django.conf import settings
 from django.db.utils import IntegrityError
 from django.core.signing import Signer
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
 
 from .forms import UploadFileForm
-from .models import TraceCapture, Project
+from .models import TraceCapture, Project, PushToken
 
 import uuid
 import gzip
 import os
 import boto3
 from botocore.client import Config
+
+signer = Signer()
 
 storage_session = boto3.session.Session()
 storage_client = storage_session.client('s3',
@@ -59,6 +63,18 @@ def get_user_projects(request):
     
     return existing_projects
 
+def token_auth_and_get_api_project(request, provider, scope):
+    auth_header = request.headers['Authorization']
+    if not auth_header.startswith('Bearer '):
+        raise Http404
+    bearer_token = auth_header.split(' ')[1]
+    print(bearer_token)
+    push_token = PushToken.objects.get(token=bearer_token)
+    project = push_token.project
+    if project.provider != provider or project.name != scope:
+        raise Http404
+    return project, push_token.user
+
 def get_user_project_and_rest(request, provider, scope):
     all_projects = get_user_projects(request)
 
@@ -96,43 +112,96 @@ def ui(request, provider, scope):
     return render(request, 'tracecap_ui/viewer.html', data)
 
 @login_required
-def upload_file(request, provider, scope):
+def push_token(request, provider, scope):
     project, all_projects = get_user_project_and_rest(request, provider, scope)
+    try:
+        pt = PushToken.objects.get(user=request.user, project=project)
+    except PushToken.DoesNotExist:
+        pt = PushToken(user=request.user, project=project)
+        pt.set_random_token()
+        pt.save()
+    data = {
+        'project': project,
+        'token': pt,
+    }
+    return render(request, 'tracecap_ui/push_token.html', data)
 
-    signer = Signer()
+def upload_get_presigned(provider, scope, redirect=True):
+    fn = str(uuid.uuid4()) + '.tcap'
+    content_type = 'application/octet-stream'
+
+    signed_fn = signer.sign(fn)
+
+    fields = {"acl": "private", "Content-Type": content_type}
+    conditions = [{"acl": "private"}, {"Content-Type": content_type}]
+
+    if redirect:
+        redirect_url = settings.SITE_URL + reverse('upload', kwargs={'provider': provider, 'scope': scope}) + '?uploaded_file=' + signed_fn
+        fields['success_action_redirect'] = redirect_url
+        conditions.append({"success_action_redirect": redirect_url})
+
+    response = storage_client.generate_presigned_post(
+        os.getenv('TRACECAP_STORAGE_BUCKET'),
+        fn,
+        Fields=fields,
+        Conditions=conditions,
+        ExpiresIn=3600
+    )
+
+    return response, signed_fn
+
+def upload_claim(user, project, uploaded_file):
+    if '?' in uploaded_file:
+        uploaded_file, _ = uploaded_file.split('?')
+    fn = signer.unsign(uploaded_file)
+
+    existing = TraceCapture.objects.filter(filename=fn).count()
+    if existing > 0:
+        # it's not acceptable to claim a file that has already been claimed, even with a valid signed filename
+        return HttpResponse(status=400)
+
+    tc = TraceCapture()
+    tc.user = user
+    tc.project = project
+    tc.filename = fn
+    tc.save()
+
+    return tc
+
+@csrf_exempt
+def push_api(request, provider, scope):
+    project, user = token_auth_and_get_api_project(request, provider, scope)
+
+    if request.method != 'POST':
+        raise Http404
 
     uploaded_file = request.GET.get('uploaded_file', None)
     if uploaded_file is None:
-        fn = str(uuid.uuid4()) + '.tcap'
-        content_type = 'application/octet-stream'
-
-        signed_fn = signer.sign(fn)
-
-        redirect = settings.SITE_URL + reverse('upload', kwargs={'provider': provider, 'scope': scope}) + '?uploaded_file=' + signed_fn
-        response = storage_client.generate_presigned_post(
-            os.getenv('TRACECAP_STORAGE_BUCKET'),
-            fn,
-            Fields={"acl": "private", "Content-Type": content_type, "success_action_redirect": redirect},
-            Conditions=[{"acl": "private"}, {"Content-Type": content_type}, {"success_action_redirect": redirect}],
-            ExpiresIn=3600
-        )
+        response, signed_fn = upload_get_presigned(provider, scope, redirect=False)
     
-        return render(request, 'tracecap_ui/upload.html', {'upload_presigned': response})
+        return JsonResponse({
+            'upload_to': response,
+            'claim_url': settings.SITE_URL + reverse('push-api', kwargs={'provider': provider, 'scope': scope}) + '?uploaded_file=' + signed_fn,
+        })
     else:
-        if '?' in uploaded_file:
-            uploaded_file, _ = uploaded_file.split('?')
-        fn = signer.unsign(uploaded_file)
+        tc = upload_claim(user, project, uploaded_file)
 
-        existing = TraceCapture.objects.filter(filename=fn).count()
-        if existing > 0:
-            # it's not acceptable to claim a file that has already been claimed, even with a valid signed filename
-            return HttpResponse(status=400)
+        return JsonResponse({
+            'url': settings.SITE_URL + reverse('ui', kwargs={'provider': provider, 'scope': scope}) + '?q=load%20' + tc.slug,
+            'query': 'load ' + tc.slug,
+        })
 
-        tc = TraceCapture()
-        tc.user = request.user
-        tc.project = project
-        tc.filename = fn
-        tc.save()
+@login_required
+def upload_file(request, provider, scope):
+    project, all_projects = get_user_project_and_rest(request, provider, scope)
+
+    uploaded_file = request.GET.get('uploaded_file', None)
+    if uploaded_file is None:
+        response, _ = upload_get_presigned(provider, scope)
+    
+        return render(request, 'tracecap_ui/upload.html', {'upload_presigned': response, 'project': project})
+    else:
+        tc = upload_claim(request.user, project, uploaded_file)
 
         return HttpResponseRedirect(reverse('ui', kwargs={'provider': provider, 'scope': scope}) + '?q=load%20' + tc.slug)
 

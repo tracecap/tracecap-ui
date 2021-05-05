@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+
+{% block title %}Home{% endblock %}
+
+{% block heading %}Push Token{% endblock %}
+
+{% block content %}
+Paste this token into the tracecap CLI to push traces as your user for the project <b>{{ project.provider }}/{{ project.name }}</b>:
+<pre>{{ token.token }}</pre>
+<br />
+<a href="{% url "ui" provider=project.provider scope=project.name %}">Back to project</a>
+{% endblock %}
