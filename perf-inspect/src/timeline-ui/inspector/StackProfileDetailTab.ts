@@ -168,11 +168,7 @@ export class StackProfileDetailTab extends LitElement {
 	render() {
 	return html`
 	<div id="main-detail">
-		<link rel="stylesheet" href="/static/node_modules/%40spectrum-css/vars/dist/spectrum-global.css">
-  		<link rel="stylesheet" href="/static/node_modules/%40spectrum-css/vars/dist/spectrum-medium.css">
-  		<link rel="stylesheet" href="/static/node_modules/%40spectrum-css/vars/dist/spectrum-light.css">
-  		<link rel="stylesheet" href="/static/node_modules/%40spectrum-css/table/dist/index-vars.css">
-		<link rel="stylesheet" href="/static/node_modules/%40spectrum-css/icon/dist/index-vars.css">
+		<link rel="stylesheet" href="/static/dist-perf-inspect/tracecap-viewer.css">
 
 		<sp-split-view horizontal primary-min="600" primary-size="600" style="height: 100%;">
 			<div style="overflow: scroll; height: 258px;">
